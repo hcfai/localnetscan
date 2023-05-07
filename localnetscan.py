@@ -14,7 +14,7 @@ from gui import tkgui
 from scanner import netscanner
 
 DIR_PATH = path.dirname(__file__)
-NOTE = """Network Scanner for AV Technician v1.0
+NOTE = """Network Scanner for AV Technician v1.1
 DO NOT use this software in  pulbic network.
 Click [OK!] if you agree to not use this software in your own risk.
 
@@ -29,16 +29,11 @@ def check_system():
     this_system = system()
     this_locale = str(getlocale()[0])
 
-    if this_system == "Windows":
-        pass
-    else:
-        pass
-
     if this_locale.startswith("English"):
         pass
     else:
         netscanner.logger.warn("ONLY WORK ON ENGLISH")
-        pass
+        gui.messagebox.show_error("Programe only work on English system", "Error")
     return (this_system, this_locale)
 
 
@@ -52,6 +47,7 @@ def buttonFunc_popupConfirmYes():
     app.set_defaultActiveInterface()
     gui.update_interfaceOptions(app.get_interfaceStrList())
     gui.update_interfaceInfo(app.get_interfaceInfo())
+    check_system()
 
 
 def buttonFunc_popupConfirmNo():
@@ -64,13 +60,66 @@ def buttonFunc_startPing():
     current_time = f"NEW SCAN START AT {strftime('%Y/%m/%d - %H:%M:%S', localtime())}"
     gui.print_textbox(current_time + "\n")
     netscanner.logger.info(current_time)
+
     if app.active_interface == {}:
-        netscanner.logger.info("not interface selected")
+        msg_1 = "Not interface selected"
+        netscanner.logger.info(msg_1)
+        gui.messagebox.show_info(msg_1)
         return
-    thread = threading.Thread(target=app.start_pings, args=(gui, gui.print_textbox))
+
+    if app.active_interface["ipv4_interface"].ip.is_global:
+        msg_2 = "Non private IP interface. scan not supported"
+        netscanner.logger.error(msg_2)
+        gui.messagebox.show_error(msg_2)
+        return
+
+    if app.active_interface["ipv4_interface"].network.prefixlen < 24:
+        msg_3 = "Network prefix small than 24, scan not supported"
+        netscanner.logger.error(msg_3)
+        gui.messagebox.show_error(msg_3)
+        return
+
+    thread = threading.Thread(target=app.start_pings)
     thread.start()
+
     app.is_scanning = True
     gui.lock_gui()
+    thread_2 = threading.Thread(target=wait_for_scan)
+    thread_2.start()
+
+
+def wait_for_scan():
+    sleep(1)
+    while True:
+        if app.is_scanning:
+            sleep(1)
+        else:
+            print_report()
+            gui.unlock_gui()
+            break
+
+
+def print_report():
+    for host in app.responded_hosts:
+        gui.print_textbox(f"{host['ipv4_addr']} is up")
+        if host["mac_address"] != "Unknow":
+            gui.print_textbox(f"--> {host['mac_address']} --> {host['vendor']} \n")
+        else:
+            gui.print_textbox("\n")
+
+    gui.clean_webbutton()
+    for host in app.responded_hosts:
+        ip = host["ipv4_addr"]
+        vendor = host["vendor"]
+        if host["http"] or host["https"]:
+            gui.print_textbox(f"----- \n{vendor} - {ip} active web service: \n")
+        else:
+            continue
+        if host["http"]:
+            gui.print_textbox(f"http://{ip}:80 \n")
+        if host["https"]:
+            gui.print_textbox(f"http://{ip}:443 \n")
+        gui.create_webbutton(ip, vendor, host["http"], host["https"])
 
 
 def buttonFunc_rescanNetwork():
@@ -96,7 +145,6 @@ def buttonFunc_savetxt():
 
     except:
         pass
-        # netscanner.logger.exception("failed to save")
     else:
         netscanner.logger.info("file saved")
 
@@ -127,6 +175,7 @@ def initGUIfunctions():
     gui.button_2.configure(command=buttonFunc_rescanNetwork)
     gui.button_3.configure(command=buttonFunc_cleanConsole)
     gui.button_4.configure(command=buttonFunc_savetxt)
+    gui.button_5.configure(command=buttonFunc_test)
     gui.checkbutton_1.configure(variable=app.settings["MacLookup"])
     app.settings["MacLookup"].set(True)
     gui.checkbutton_2.configure(variable=app.settings["httpScan"])
@@ -137,16 +186,17 @@ def initGUIfunctions():
     gui.om_optionVar.trace("w", menuFunc_changeActiveInterface)
 
 
+def test_func():
+    pass
+
+
+def buttonFunc_test():
+    pass
+
+
 if __name__ == "__main__":
     # load GUI
-    gui = tkgui.Tkgui(title="Network Scaner v1.0")
-
-    system_info = check_system()
-    if system_info[0] == "Windows":
-        pass
-
-    gui.iconbitmap(path.join(DIR_PATH, "icon.ico"))
-    gui.popup.iconbitmap(path.join(DIR_PATH, "icon.ico"))
+    gui = tkgui.Tkgui(title="Network Scaner v1.1", dirpath=DIR_PATH)
 
     # log handler, scanner to gui
     log_tkhandle = netscanner.TkHandle(gui.console_textbox2)
@@ -159,5 +209,7 @@ if __name__ == "__main__":
     # link gui to backend
     initGUItext()
     initGUIfunctions()
+
+    # test_func()
 
     gui.mainloop()

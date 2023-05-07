@@ -113,48 +113,40 @@ class NetScanner:
             "SkipPing": BooleanVar(),
         }
 
-    def start_pings(self, gui=None, print2textbox=None):
-        if self.settings["SkipPing"].get() == False:
-            self._pingicmps()
-            logger.info("all ping finished")
-        else:
+    def start_pings(self):
+        ## check skip options
+        if self.settings["SkipPing"].get():
             logger.info("skip pings")
+        else:
+            thread = threading.Thread(target=self._pingicmps)
+            thread.start()
+            thread.join()
+            # self._pingicmps()
+            logger.info("all ping finished")
 
+        ## run web port scan
         if self.settings["httpScan"].get() or self.settings["httpsScan"].get():
             logger.info("scanning web service")
-            self.check_tcp()
+            thread = threading.Thread(target=self.check_tcp)
+            thread.start()
+            thread.join()
+            # self.check_tcp()
 
+        ## run mac lookup
         if self.settings["MacLookup"].get():
             logger.info("check mac address and vendor")
-            self.check_macvendor()
+            thread = threading.Thread(target=self.check_macvendor)
+            thread.start()
+            thread.join()
+            # self.check_macvendor()
 
-        if gui != None:
-            gui.unlock_gui()
-        self.is_scanning = False
-        if print2textbox != None:
-            self.print_report(print2textbox)
-
-    def print_report(self, textbox):
+        ## sort outputs
         self.responded_hosts = sorted(
             self.responded_hosts, key=lambda d: d["ipv4_addr"].packed
         )
-        for host in self.responded_hosts:
-            textbox(f"{host['ipv4_addr']} is up")
-            if host["mac_address"] != "Unknow":
-                textbox(f"! --> {host['mac_address']} --> {host['vendor']} \n")
-            else:
-                textbox("\n")
 
-        for host in self.responded_hosts:
-            if host["http"] or host["https"]:
-                textbox("-->")
-                textbox(
-                    f"{host['vendor']} - {host['ipv4_addr']} active web service: \n"
-                )
-            if host["http"]:
-                textbox(f"http://{host['ipv4_addr']}:80 \n")
-            if host["https"]:
-                textbox(f"http://{host['ipv4_addr']}:443 \n")
+        ## unlock gui
+        self.is_scanning = False
 
     def _pingicmps(self):
         thread_queue = []
@@ -372,8 +364,18 @@ class NetScanner:
             line.strip()
             try:
                 if bool(RE_MACTYPE.search(line)):
-                    ip = RE_IPPATTERN.search(line)[0]
-                    mac = RE_MACPATTERN.search(line)[0].upper()
+                    ip_temp = RE_IPPATTERN.search(line)
+                    if ip_temp != None:
+                        ip = ip_temp[0]
+                    else:
+                        ip = "Unknow"
+                    mac_temp = RE_MACPATTERN.search(line)
+                    if mac_temp != None:
+                        mac = mac_temp[0]
+                    else:
+                        mac = "Unknow"
+                    # ip = RE_IPPATTERN.search(line)[0]
+                    # mac = RE_MACPATTERN.search(line)[0].upper()
                     temp_dict[ip] = mac
             except:
                 logger.exception("failed to get mac address from ARP table")

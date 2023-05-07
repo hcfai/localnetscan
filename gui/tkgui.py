@@ -1,78 +1,110 @@
+import webbrowser
 import ttkbootstrap as ttk
-from ttkbootstrap.scrolled import ScrolledText
+from os import path
+from ttkbootstrap import PhotoImage
+from ttkbootstrap.dialogs.dialogs import Messagebox
+from ttkbootstrap.scrolled import ScrolledText, ScrolledFrame
 
 
 class Tkgui(ttk.Window):
-    def __init__(self, *args, title: str = "Network Scaner", **kwargs):
+    def __init__(self, *args, title: str = "Network Scaner", dirpath: str, **kwargs):
         super().__init__(*args, **kwargs)
         screensize = (
             f"{int(self.winfo_screenwidth()*0.5)}x{int(self.winfo_screenheight()*0.6)}"
         )
-        self.create_popup()
+        self.create_popup(dirpath)
         self.title(title)
         self.geometry(screensize)
         self.minsize(720, 700)
         self.withdraw()
+        self.iconbitmap(path.join(dirpath, "icon.ico"))
+        self.messagebox = Messagebox()
+        self.image_hostNodeDown = PhotoImage(
+            file=path.join(dirpath, "gui", "HostNode.png")
+        )
+        # self.image_hostNodeUp = PhotoImage(
+        #     file=path.join(dirpath, "/gui/HostNode_up.png")
+        # )
 
         self.main_frame = ttk.Frame(self)
-        self.main_frame.pack(side="top", anchor="e", expand=True, fill="both")
-
-        self.progressbar = ttk.Progressbar(self, mode="indeterminate")
-        self.progressbar.start(20)
-        self.progressbar.pack(side="top", anchor="s", expand=True, fill="x")
+        self.main_frame.pack(side="top", anchor="n", expand=True, fill="both")
+        self.webNodeList = []
+        self.gridHostList = []
 
         self.layout_console()
         self.layout_sidebar()
 
     def layout_console(self):
         self.frame_console = ttk.Frame(self.main_frame)
-        self.console_label = ttk.Label(self.frame_console, text="Output Console")
-        self.console_label.pack(anchor="n")
-        self.console_textbox = ScrolledText(self.frame_console)
-        self.console_textbox.text.configure(height=12, state="disabled")
-        self.console_textbox.pack(anchor="n", pady=(10, 0), expand=True, fill="both")
-        self.console_textbox2 = ScrolledText(self.frame_console)
-        self.console_textbox2.text.configure(height=12)
-        self.console_textbox2.pack(anchor="n", pady=(10, 0), fill="x")
+        self.sublayout_outputs()
+        self.sublayout_debugconsole()
         self.sublayout_scanOptions()
         self.sublayout_scanControl()
+
         self.frame_console.pack(
             side="left", anchor="w", padx=10, pady=10, expand=True, fill="both"
         )
 
+    def sublayout_outputs(self):
+        self.notebook_main = ttk.Notebook(self.frame_console, bootstyle="primary")
+        # Output Terminal
+        self.noteframe_terminal = ttk.Frame(None)
+        self.console_textbox = ScrolledText(self.noteframe_terminal, padding=0)
+        self.console_textbox.text.configure(height=12, state="disabled")
+        self.console_textbox.pack(expand=True, fill="both")
+
+        # website button page
+        self.noteframe_webPages = ttk.Frame(None)
+        self.noteframe_helper_webPages = ScrolledFrame(self.noteframe_webPages)
+        self.noteframe_helper_webPages.pack(expand=True, fill="both")
+
+        # add frame to notebook
+        self.notebook_main.add(self.noteframe_terminal, text="Terminal  ")
+        self.notebook_main.add(self.noteframe_webPages, text="Web Serivces")
+        self.notebook_main.pack(expand=True, fill="both")
+
+    def sublayout_debugconsole(self):
+        self.console_textbox2 = ScrolledText(self.frame_console)
+        self.console_textbox2.text.configure(height=12)
+        self.console_textbox2.pack(fill="x")
+        self.progressbar = ttk.Progressbar(self.frame_console, mode="determinate")
+        self.progressbar.pack(fill="x", pady=(5, 0))
+
     def sublayout_scanOptions(self):
-        self.frame_scanOptions = ttk.Frame(self.frame_console, height=4)
+        self.subframe_scanOptions = ttk.Frame(self.frame_console, height=4)
         self.checkbutton_1 = ttk.Checkbutton(
-            self.frame_scanOptions, bootstyle="round-toggle", text="MAC Address Lookup"
+            self.subframe_scanOptions,
+            bootstyle="round-toggle",
+            text="MAC Address Lookup",
         )
         self.checkbutton_2 = ttk.Checkbutton(
-            self.frame_scanOptions, bootstyle="round-toggle", text="HTTP Scan"
+            self.subframe_scanOptions, bootstyle="round-toggle", text="HTTP Scan"
         )
         self.checkbutton_3 = ttk.Checkbutton(
-            self.frame_scanOptions, bootstyle="round-toggle", text="HTTPS Scan"
+            self.subframe_scanOptions, bootstyle="round-toggle", text="HTTPS Scan"
         )
         self.checkbutton_4 = ttk.Checkbutton(
-            self.frame_scanOptions, bootstyle="round-toggle", text="Skip ICMP"
+            self.subframe_scanOptions, bootstyle="round-toggle", text="Skip ICMP"
         )
-        # self.checkbutton_var = {"MacLookup": ttk.BooleanVar()}
         self.checkbutton_1.pack(side="left", anchor="w", padx=(10, 0))
-        # self.checkbutton_1.configure(variable=self.checkbutton_var["MacLookup"])
         self.checkbutton_2.pack(side="left", anchor="w", padx=(10, 0))
         self.checkbutton_3.pack(side="left", anchor="w", padx=(10, 0))
         self.checkbutton_4.pack(side="left", anchor="w", padx=(10, 0))
-        self.frame_scanOptions.pack(anchor="nw", pady=(10, 0))
+        self.subframe_scanOptions.pack(anchor="w", pady=(10, 0))
 
     def sublayout_scanControl(self):
-        self.frame_scanControl = ttk.Frame(self.frame_console, height=4)
-        self.button_1 = ttk.Button(self.frame_scanControl, text="Start Scan")
-        self.button_2 = ttk.Button(self.frame_scanControl, text="Refresh Network")
-        self.button_3 = ttk.Button(self.frame_scanControl, text="Clean All")
-        self.button_4 = ttk.Button(self.frame_scanControl, text="Save to .txt")
+        self.subframe_scanControl = ttk.Frame(self.frame_console, height=4)
+        self.button_1 = ttk.Button(self.subframe_scanControl, text="Start Scan")
+        self.button_2 = ttk.Button(self.subframe_scanControl, text="Refresh Network")
+        self.button_3 = ttk.Button(self.subframe_scanControl, text="Clean All")
+        self.button_4 = ttk.Button(self.subframe_scanControl, text="Save to .txt")
+        self.button_5 = ttk.Button(self.subframe_scanControl, text="Debug")
         self.button_1.pack(side="left", anchor="w", padx=(10, 0))
         self.button_2.pack(side="left", anchor="w", padx=(10, 0))
         self.button_3.pack(side="left", anchor="w", padx=(10, 0))
         self.button_4.pack(side="left", anchor="w", padx=(10, 0))
-        self.frame_scanControl.pack(anchor="nw", pady=(10, 0))
+        self.button_5.pack(side="left", anchor="w", padx=(10, 0))
+        self.subframe_scanControl.pack(anchor="w", pady=(10, 0))
 
     def layout_sidebar(self):
         self.frame_sidebar = ttk.Frame(self.main_frame)
@@ -116,27 +148,34 @@ class Tkgui(ttk.Window):
             self.sidebar_textbox.insert("end", line + "\n")
         self.sidebar_textbox.configure(state="disabled")
 
-    def create_popup(self):
-        screen_width = int(self.winfo_screenwidth())
-        screen_height = int(self.winfo_screenheight())
-        screensize = f"{int(screen_width*0.3)}x{int(screen_height*0.25)}+{int(screen_width*0.3)}+{int(screen_height*0.3)}"
-        self.popup = ttk.Toplevel(title="Wellcome")
-        # self.popup.geometry("500x260+200+200")
-        self.popup.geometry(screensize)
-        self.popup.resizable(False, False)
-        self.popup_textbox = ttk.Text(self.popup, height=1)
-        self.popup_textbox.pack(padx=20, pady=20, expand=True, fill="y")
-        self.frame_popup = ttk.Frame(self.popup)
-        self.popup_button = ttk.Button(self.frame_popup, width=16, text="OK!")
-        self.popup_button.pack(side="left", padx=20)
-        self.popup_button2 = ttk.Button(self.frame_popup, width=16, text="NO THANKS")
-        self.popup_button2.pack(side="left", padx=20)
-        self.frame_popup.pack(side="top", padx=20, pady=(0, 10))
-
     def print_textbox(self, text: str):
         self.console_textbox.text.configure(state="normal")
         self.console_textbox.text.insert("end", text)
         self.console_textbox.text.configure(state="disabled")
+
+    def clean_webbutton(self):
+        if len(self.webNodeList) > 0:
+            for node in self.webNodeList:
+                node.destroy()
+
+    def create_webbutton(self, web: str, text: str, http: bool, https: bool):
+        self.newLabelFrame = ttk.LabelFrame(self.noteframe_helper_webPages, text=text)
+        if http:
+            self.newButton = ttk.Button(
+                self.newLabelFrame,
+                text=f"http://{web}:80",
+                command=lambda: self.open_website(web, False),
+            )
+            self.newButton.pack(side="left", anchor="w", padx=10, pady=10)
+        if https:
+            self.newButton = ttk.Button(
+                self.newLabelFrame,
+                text=f"https://{web}:443",
+                command=lambda: self.open_website(web, True),
+            )
+            self.newButton.pack(side="left", anchor="w", padx=10, pady=10)
+        self.webNodeList.append(self.newLabelFrame)
+        self.newLabelFrame.pack(padx=(0, 30), fill="x")
 
     def lock_gui(self):
         self.button_1.configure(state="disabled")
@@ -148,6 +187,7 @@ class Tkgui(ttk.Window):
         self.checkbutton_3.configure(state="disabled")
         self.checkbutton_4.configure(state="disabled")
         self.sidebar_optionMenu.configure(state="disabled")
+        self.progressbar.start(20)
 
     def unlock_gui(self):
         self.button_1.configure(state="normal")
@@ -159,12 +199,37 @@ class Tkgui(ttk.Window):
         self.checkbutton_3.configure(state="normal")
         self.checkbutton_4.configure(state="normal")
         self.sidebar_optionMenu.configure(state="normal")
+        self.progressbar.stop()
+
+    def create_popup(self, dirpath):
+        screen_width = int(self.winfo_screenwidth())
+        screen_height = int(self.winfo_screenheight())
+        screensize = f"{int(screen_width*0.3)}x{int(screen_height*0.25)}+{int(screen_width*0.3)}+{int(screen_height*0.3)}"
+        self.popup = ttk.Toplevel(title="Wellcome")
+        self.popup.geometry(screensize)
+        self.popup.resizable(False, False)
+        self.popup.iconbitmap(path.join(dirpath, "icon.ico"))
+        self.popup_textbox = ttk.Text(self.popup, height=1)
+        self.popup_textbox.pack(padx=20, pady=20, expand=True, fill="y")
+        self.frame_popup = ttk.Frame(self.popup)
+        self.popup_button = ttk.Button(self.frame_popup, width=16, text="OK!")
+        self.popup_button.pack(side="left", padx=20)
+        self.popup_button2 = ttk.Button(self.frame_popup, width=16, text="NO THANKS")
+        self.popup_button2.pack(side="left", padx=20)
+        self.frame_popup.pack(side="top", padx=20, pady=(0, 10))
 
     @staticmethod
     def clean_text(textbox):
         textbox.configure(state="normal")
         textbox.delete("1.0", "end")
         textbox.configure(state="disabled")
+
+    @staticmethod
+    def open_website(web: str, ssl: bool):
+        if ssl:
+            webbrowser.open(f"https://{web}:443")
+        else:
+            webbrowser.open(f"http://{web}:80")
 
 
 if __name__ == "__main__":
