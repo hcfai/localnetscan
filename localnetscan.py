@@ -3,7 +3,9 @@ import threading
 
 from tkinter import filedialog
 from os import _exit, path
+from platform import system
 from sys import executable
+from locale import getlocale
 
 from time import strftime, localtime, sleep
 
@@ -23,9 +25,21 @@ bauerj/mac_vendor_lookup
 """
 
 
-def languagecheck():
-    if netscanner.check_systemLANG == False:
+def check_system():
+    this_system = system()
+    this_locale = str(getlocale()[0])
+
+    if this_system == "Windows":
         pass
+    else:
+        pass
+
+    if this_locale.startswith("English"):
+        pass
+    else:
+        netscanner.logger.warn("ONLY WORK ON ENGLISH")
+        pass
+    return (this_system, this_locale)
 
 
 def buttonFunc_popupConfirmYes():
@@ -126,9 +140,13 @@ def initGUIfunctions():
 if __name__ == "__main__":
     # load GUI
     gui = tkgui.Tkgui(title="Network Scaner v1.0")
+
+    system_info = check_system()
+    if system_info[0] == "Windows":
+        pass
+
     gui.iconbitmap(path.join(DIR_PATH, "icon.ico"))
     gui.popup.iconbitmap(path.join(DIR_PATH, "icon.ico"))
-    languagecheck()
 
     # log handler, scanner to gui
     log_tkhandle = netscanner.TkHandle(gui.console_textbox2)

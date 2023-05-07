@@ -1,7 +1,6 @@
 import logging
 import threading
 
-from locale import getlocale
 from socket import socket, AF_INET, SOCK_DGRAM, SOCK_STREAM
 from subprocess import run, PIPE
 from re import compile
@@ -374,15 +373,11 @@ class NetScanner:
             try:
                 if bool(RE_MACTYPE.search(line)):
                     ip = RE_IPPATTERN.search(line)[0]
-                    mac = RE_MACPATTERN.search(line)[0]
+                    mac = RE_MACPATTERN.search(line)[0].upper()
                     temp_dict[ip] = mac
             except:
                 logger.exception("failed to get mac address from ARP table")
         return temp_dict
-
-
-def check_systemLANG() -> bool:
-    return getlocale()[0] == "English_United States"
 
 
 def get_defip() -> IPv4Address:
