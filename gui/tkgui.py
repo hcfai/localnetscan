@@ -1,7 +1,6 @@
 import webbrowser
 import ttkbootstrap as ttk
 from os import path
-from ttkbootstrap import PhotoImage
 from ttkbootstrap.dialogs.dialogs import Messagebox
 from ttkbootstrap.scrolled import ScrolledText, ScrolledFrame
 
@@ -19,12 +18,6 @@ class Tkgui(ttk.Window):
         self.withdraw()
         self.iconbitmap(path.join(dirpath, "icon.ico"))
         self.messagebox = Messagebox()
-        self.image_hostNodeDown = PhotoImage(
-            file=path.join(dirpath, "gui", "HostNode.png")
-        )
-        # self.image_hostNodeUp = PhotoImage(
-        #     file=path.join(dirpath, "/gui/HostNode_up.png")
-        # )
 
         self.main_frame = ttk.Frame(self)
         self.main_frame.pack(side="top", anchor="n", expand=True, fill="both")
