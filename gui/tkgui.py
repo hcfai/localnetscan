@@ -8,23 +8,24 @@ class Tkgui(ttk.Window):
         screensize = (
             f"{int(self.winfo_screenwidth()*0.5)}x{int(self.winfo_screenheight()*0.6)}"
         )
-        print(screensize)
         self.create_popup()
         self.title(title)
-        # self.geometry("1080x700")
         self.geometry(screensize)
         self.minsize(720, 700)
         self.withdraw()
 
-        # self.progressbar = ttk.Progressbar(self, mode="indeterminate")
-        # self.progressbar.start(20)
-        # self.progressbar.pack(side="bottom", anchor="s", expand=True, fill="x")
+        self.main_frame = ttk.Frame(self)
+        self.main_frame.pack(side="top", anchor="e", expand=True, fill="both")
+
+        self.progressbar = ttk.Progressbar(self, mode="indeterminate")
+        self.progressbar.start(20)
+        self.progressbar.pack(side="top", anchor="s", expand=True, fill="x")
 
         self.layout_console()
         self.layout_sidebar()
 
     def layout_console(self):
-        self.frame_console = ttk.Frame(self)
+        self.frame_console = ttk.Frame(self.main_frame)
         self.console_label = ttk.Label(self.frame_console, text="Output Console")
         self.console_label.pack(anchor="n")
         self.console_textbox = ScrolledText(self.frame_console)
@@ -74,7 +75,7 @@ class Tkgui(ttk.Window):
         self.frame_scanControl.pack(anchor="nw", pady=(10, 0))
 
     def layout_sidebar(self):
-        self.frame_sidebar = ttk.Frame(self)
+        self.frame_sidebar = ttk.Frame(self.main_frame)
         self.sidebar_label = ttk.Label(self.frame_sidebar, text="Interface Info")
         self.sidebar_label.pack(anchor="n")
 
