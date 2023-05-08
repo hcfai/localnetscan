@@ -47,7 +47,7 @@ logger.addHandler(log_fileHandler)
 logger.addHandler(log_streamHandler)
 
 (
-    RMAC_PATTERN,
+    # REMAC_PATTERN,
     RE_NAME,
     RE_IP,
     RE_SUBNET,
@@ -55,8 +55,9 @@ logger.addHandler(log_streamHandler)
     RE_MACPATTERN,
     RE_IPPATTERN,
     RE_MACTYPE,
+    W_IP,
 ) = (
-    compile(r"(([0-9a-fA-F]){2}[-:]){5}([0-9a-fA-F]){2}"),
+    # compile(r"(([0-9a-fA-F]){2}[-:]){5}([0-9a-fA-F]){2}"),
     compile(r"Description"),
     compile(r"IPv4 Address"),
     compile(r"Subnet Mask"),
@@ -64,26 +65,7 @@ logger.addHandler(log_streamHandler)
     compile(r"(([0-9a-fA-F]){2}[-:]){5}([0-9a-fA-F]){2}"),
     compile(r"[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}"),
     compile(r"dynamic"),
-)
-
-(
-    RMAC_PATTERN_CN,
-    RE_NAME_CN,
-    RE_IP_CN,
-    RE_SUBNET_CN,
-    RE_MAC_CN,
-    RE_MACPATTERN_CN,
-    RE_IPPATTERN_CN,
-    RE_MACTYPE_CN,
-) = (
-    compile(r"(([0-9a-fA-F]){2}[-:]){5}([0-9a-fA-F]){2}"),
-    compile(r"Description"),
-    compile(r"IPv4 Address"),
-    compile(r"Subnet Mask"),
-    compile(r"Physical Address"),
-    compile(r"(([0-9a-fA-F]){2}[-:]){5}([0-9a-fA-F]){2}"),
-    compile(r"[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}"),
-    compile(r"dynamic"),
+    "(Preferred)",
 )
 
 
@@ -327,15 +309,15 @@ class NetScanner:
                 if len(newInterface) > 0:
                     interfaceList.append(newInterface)
                 newInterface = {}
-                newInterface["interface"] = line.split(" :")[1].strip()
+                newInterface["interface"] = line.split(":")[1].strip()
             elif bool(RE_IP.search(line)):
                 newInterface["ipv4_addr"] = (
-                    line.split(" :")[1].strip().replace("(Preferred)", "")
+                    line.split(" :")[1].strip().replace(W_IP, "")
                 )
             elif bool(RE_SUBNET.search(line)):
-                newInterface["subnet_mask"] = line.split(" :")[1].strip()
+                newInterface["subnet_mask"] = line.split(":")[1].strip()
             elif bool(RE_MAC.search(line)):
-                newInterface["mac_address"] = line.split(" :")[1].strip()
+                newInterface["mac_address"] = line.split(":")[1].strip()
         interfaceList.append(newInterface)
         # for interface in interfaceList:
         #     logger.debug(interface)

@@ -3,9 +3,11 @@ import threading
 
 from tkinter import filedialog
 from os import _exit, path
-from platform import system
+
+# from platform import system
 from sys import executable
 from locale import getlocale
+from re import compile
 
 from time import strftime, localtime, sleep
 
@@ -14,9 +16,12 @@ from gui import tkgui
 from scanner import netscanner
 
 DIR_PATH = path.dirname(__file__)
-NOTE = """Network Scanner for AV Technician v1.1
-DO NOT use this software in  pulbic network.
-Click [OK!] if you agree to not use this software in your own risk.
+NOTE = """Network Scanner for AV Technician v1.2
+DO NOT use this software in public network.
+Prefix small then 24 is not supported.
+Only work on English and Tranditional Chinese
+Click [OK!] if you agree to use this software in your own risk.
+
 
 Included Moduls:
 israel-dryer/ttkbootstrap
@@ -26,15 +31,22 @@ bauerj/mac_vendor_lookup
 
 
 def check_system():
-    this_system = system()
     this_locale = str(getlocale()[0])
 
     if this_locale.startswith("English"):
         pass
+    elif this_locale.startswith("Chinese (Traditional)"):
+        netscanner.RE_NAME = compile(r"描述")
+        netscanner.RE_IP = compile(r"IPv4 位址")
+        netscanner.RE_SUBNET = compile(r"子網路遮罩")
+        netscanner.RE_MAC = compile(r"實體位址")
+        netscanner.RE_MACTYPE = compile(r"動態")
+        netscanner.W_IP = "(偏好選項)"
     else:
-        netscanner.logger.warn("ONLY WORK ON ENGLISH")
-        gui.messagebox.show_error("Programe only work on English system", "Error")
-    return (this_system, this_locale)
+        netscanner.logger.warn("ONLY WORK ON ENGLISH or CHINESE (TRANDITIONAL)")
+        gui.messagebox.show_error(
+            "Programe only works on English or Chinese (Traditional) system", "Error"
+        )
 
 
 def buttonFunc_popupConfirmYes():
@@ -175,7 +187,6 @@ def initGUIfunctions():
     gui.button_2.configure(command=buttonFunc_rescanNetwork)
     gui.button_3.configure(command=buttonFunc_cleanConsole)
     gui.button_4.configure(command=buttonFunc_savetxt)
-    gui.button_5.configure(command=buttonFunc_test)
     gui.checkbutton_1.configure(variable=app.settings["MacLookup"])
     app.settings["MacLookup"].set(True)
     gui.checkbutton_2.configure(variable=app.settings["httpScan"])
@@ -184,6 +195,7 @@ def initGUIfunctions():
     app.settings["httpsScan"].set(True)
     gui.checkbutton_4.configure(variable=app.settings["SkipPing"])
     gui.om_optionVar.trace("w", menuFunc_changeActiveInterface)
+    # gui.button_5.configure(command=buttonFunc_test)
 
 
 def test_func():
@@ -196,12 +208,13 @@ def buttonFunc_test():
 
 if __name__ == "__main__":
     # load GUI
-    gui = tkgui.Tkgui(title="Network Scaner v1.1", dirpath=DIR_PATH)
+    gui = tkgui.Tkgui(title="Network Scaner v1.2", dirpath=DIR_PATH)
 
     # log handler, scanner to gui
     log_tkhandle = netscanner.TkHandle(gui.console_textbox2)
     log_tkhandle.setLevel(logging.INFO)
     netscanner.logger.addHandler(log_tkhandle)
+    check_system()
 
     # load backend
     app = netscanner.NetScanner(vendorListPath=path.join(DIR_PATH, "mac_vendor.txt"))

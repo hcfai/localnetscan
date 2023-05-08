@@ -91,12 +91,12 @@ class Tkgui(ttk.Window):
         self.button_2 = ttk.Button(self.subframe_scanControl, text="Refresh Network")
         self.button_3 = ttk.Button(self.subframe_scanControl, text="Clean All")
         self.button_4 = ttk.Button(self.subframe_scanControl, text="Save to .txt")
-        self.button_5 = ttk.Button(self.subframe_scanControl, text="Debug")
         self.button_1.pack(side="left", anchor="w", padx=(10, 0))
         self.button_2.pack(side="left", anchor="w", padx=(10, 0))
         self.button_3.pack(side="left", anchor="w", padx=(10, 0))
         self.button_4.pack(side="left", anchor="w", padx=(10, 0))
-        self.button_5.pack(side="left", anchor="w", padx=(10, 0))
+        # self.button_5 = ttk.Button(self.subframe_scanControl, text="Debug")
+        # self.button_5.pack(side="left", anchor="w", padx=(10, 0))
         self.subframe_scanControl.pack(anchor="w", pady=(10, 0))
 
     def layout_sidebar(self):
