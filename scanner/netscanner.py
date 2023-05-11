@@ -1,4 +1,5 @@
 import logging
+from sys import exception
 import threading
 
 from socket import socket, AF_INET, SOCK_DGRAM, SOCK_STREAM
@@ -39,34 +40,24 @@ logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG)
 log_formatter = logging.Formatter("[%(levelname)s] %(message)s")
 log_fileHandler = logging.FileHandler("netscan.log")
-log_fileHandler.setLevel(logging.INFO)
+log_fileHandler.setLevel(logging.DEBUG)
 log_fileHandler.setFormatter(log_formatter)
 log_streamHandler = logging.StreamHandler()
 log_streamHandler.setFormatter(log_formatter)
 logger.addHandler(log_fileHandler)
 logger.addHandler(log_streamHandler)
 
-(
-    # REMAC_PATTERN,
-    RE_NAME,
-    RE_IP,
-    RE_SUBNET,
-    RE_MAC,
-    RE_MACPATTERN,
-    RE_IPPATTERN,
-    RE_MACTYPE,
-    W_IP,
-) = (
-    # compile(r"(([0-9a-fA-F]){2}[-:]){5}([0-9a-fA-F]){2}"),
-    compile(r"Description"),
-    compile(r"IPv4 Address"),
-    compile(r"Subnet Mask"),
-    compile(r"Physical Address"),
-    compile(r"(([0-9a-fA-F]){2}[-:]){5}([0-9a-fA-F]){2}"),
-    compile(r"[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}"),
-    compile(r"dynamic"),
-    "(Preferred)",
-)
+# REMAC_PATTERN,
+RE_NAME = compile(r"Description")
+RE_NETSH_NAME = compile(r"Configuration for interface")
+RE_IP = compile(r"IPv4 Address")
+RE_NETSH_IP = compile(r"IP Address")
+RE_SUBNET = compile(r"Subnet Mask")
+RE_MAC = compile(r"Physical Address")
+RE_MACPATTERN = compile(r"(([0-9a-fA-F]){2}[-:]){5}([0-9a-fA-F]){2}")
+RE_IPPATTERN = compile(r"[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}")
+RE_MACTYPE = compile(r"dynamic")
+W_IP = "(Preferred)"
 
 
 class NetScanner:
@@ -83,6 +74,7 @@ class NetScanner:
                 logger.debug(f"found vendor list in {vendorListPath}")
 
         self.is_scanning = False
+        self.isAdmin = False
         self.active_interface = {}
         self.interface_list = []
         self.responded_hosts = []
@@ -249,11 +241,26 @@ class NetScanner:
             temp_list.append(f"{k.replace('_',' ').capitalize()}:\n{v}\n")
         return temp_list
 
+    def get_netshInfo(self):
+        if self.active_interface != {}:
+            lines = str(
+                self.__run_windowsCommand(
+                    f'netsh int ipv4 sh add name={self.active_interface["netsh"]}'
+                )
+            ).split("\\n")
+            return lines
+        return []
+
     def scan_interfaces(self):
         logger.debug("scanning interfaces on this device")
         runwincmd_ipconfig = str(self.__run_windowsCommand("ipconfig -all"))
         temp_list = self.__sort_ipconfig(runwincmd_ipconfig)
         self.interface_list = self.__filter_nonActiveInterface(temp_list)
+        if self.isAdmin:
+            runwincmd_netsh = str(self.__run_windowsCommand("netsh int ipv4 sh add"))
+            self.interface_list = self.__get_netshName(
+                self.interface_list, runwincmd_netsh
+            )
         for nic in self.interface_list:
             logger.info(
                 f"interface found: {nic['interface']} --> {nic['ipv4_interface']}"
@@ -282,6 +289,27 @@ class NetScanner:
                 self.active_interface = interface
                 return
         logger.debug(f"cant found {ip} in interface list")
+
+    def set_ActiveInterface_staticIP(self, ip, sn, gw):
+        try:
+            if gw != "":
+                run(
+                    f'netsh int ipv4 set add name="{self.active_interface["netsh"]}" static {ip} {sn} ',
+                )
+            else:
+                run(
+                    f'netsh int ipv4 set add name="{self.active_interface["netsh"]}" static {ip} {sn} {gw}',
+                )
+        except exception as e:
+            logger.debug(e)
+            logger.error("Set interface to static ip failed")
+
+    def set_ActiveInterface_DHCP(self):
+        try:
+            run(f'netsh int ipv4 set add {self.active_interface["netsh"]} dhcp')
+        except exception as e:
+            logger.debug(e)
+            logger.error("Set interface to DHCP failed")
 
     @staticmethod
     def __run_windowsCommand(command: str):
@@ -319,8 +347,34 @@ class NetScanner:
             elif bool(RE_MAC.search(line)):
                 newInterface["mac_address"] = line.split(":")[1].strip()
         interfaceList.append(newInterface)
-        # for interface in interfaceList:
-        #     logger.debug(interface)
+        return interfaceList
+
+    @staticmethod
+    def __get_netshName(_interfaceList: list, input: str):
+        interfaceList = _interfaceList
+        lines = input.split("\\n")
+        temp_dict = {}
+        temp_name = ""
+        temp_ip = ""
+        for line in lines:
+            line.strip()
+            # print(line, len(line))
+            if bool(RE_NETSH_NAME.search(line)):
+                temp_name = line.split("interface")[1].strip()
+
+            elif bool(RE_NETSH_IP.search(line)):
+                temp_ip = line.split(":")[1].strip()
+            if len(line) == 0:
+                temp_dict[temp_ip] = temp_name
+                temp_ip = ""
+                temp_name = ""
+
+        for interface in interfaceList:
+            try:
+                temp2_ip = interface["ipv4_interface"].ip.exploded
+                interface["netsh"] = temp_dict[temp2_ip]
+            except:
+                interface["netsh"] = "Unknow"
         return interfaceList
 
     @staticmethod
@@ -356,8 +410,6 @@ class NetScanner:
                         mac = mac_temp[0]
                     else:
                         mac = "Unknow"
-                    # ip = RE_IPPATTERN.search(line)[0]
-                    # mac = RE_MACPATTERN.search(line)[0].upper()
                     temp_dict[ip] = mac
             except:
                 logger.exception("failed to get mac address from ARP table")
