@@ -22,15 +22,15 @@ class Tkgui(ttk.Window):
         self.main_frame = ttk.Frame(self)
         self.main_frame.pack(side="top", anchor="n", expand=True, fill="both")
         self.webNodeList = []
-        self.gridHostList = []
+        self.isAdmin = False
 
         self.layout_console()
         self.layout_sidebar()
 
     def layout_console(self):
         self.frame_console = ttk.Frame(self.main_frame)
-        self.sublayout_outputs()
-        self.sublayout_debugconsole()
+        self.sublayout_notebook()
+        self.sublayout_infomationConsole()
         self.sublayout_scanOptions()
         self.sublayout_scanControl()
 
@@ -38,7 +38,7 @@ class Tkgui(ttk.Window):
             side="left", anchor="w", padx=10, pady=10, expand=True, fill="both"
         )
 
-    def sublayout_outputs(self):
+    def sublayout_notebook(self):
         self.notebook_main = ttk.Notebook(self.frame_console, bootstyle="primary")
         # Output Terminal
         self.noteframe_terminal = ttk.Frame(None)
@@ -51,12 +51,16 @@ class Tkgui(ttk.Window):
         self.noteframe_helper_webPages = ScrolledFrame(self.noteframe_webPages)
         self.noteframe_helper_webPages.pack(expand=True, fill="both")
 
+        # netsh page
+        self.noteframe_netsh = ttk.Frame(None)
+
         # add frame to notebook
         self.notebook_main.add(self.noteframe_terminal, text="Terminal  ")
         self.notebook_main.add(self.noteframe_webPages, text="Web Serivces")
+        self.notebook_main.add(self.noteframe_netsh, text="Interface Control")
         self.notebook_main.pack(expand=True, fill="both")
 
-    def sublayout_debugconsole(self):
+    def sublayout_infomationConsole(self):
         self.console_textbox2 = ScrolledText(self.frame_console)
         self.console_textbox2.text.configure(height=12)
         self.console_textbox2.pack(fill="x")
@@ -95,8 +99,10 @@ class Tkgui(ttk.Window):
         self.button_2.pack(side="left", anchor="w", padx=(10, 0))
         self.button_3.pack(side="left", anchor="w", padx=(10, 0))
         self.button_4.pack(side="left", anchor="w", padx=(10, 0))
-        # self.button_5 = ttk.Button(self.subframe_scanControl, text="Debug")
-        # self.button_5.pack(side="left", anchor="w", padx=(10, 0))
+        self.button_5 = ttk.Button(self.subframe_scanControl, text="Debug")
+        self.button_5.pack(side="left", anchor="w", padx=(10, 0))
+        self.button_6 = ttk.Button(self.subframe_scanControl, text="Debug")
+        self.button_6.pack(side="left", anchor="w", padx=(10, 0))
         self.subframe_scanControl.pack(anchor="w", pady=(10, 0))
 
     def layout_sidebar(self):
@@ -151,25 +157,6 @@ class Tkgui(ttk.Window):
             for node in self.webNodeList:
                 node.destroy()
 
-    def create_webbutton(self, web: str, text: str, http: bool, https: bool):
-        self.newLabelFrame = ttk.LabelFrame(self.noteframe_helper_webPages, text=text)
-        if http:
-            self.newButton = ttk.Button(
-                self.newLabelFrame,
-                text=f"http://{web}:80",
-                command=lambda: self.open_website(web, False),
-            )
-            self.newButton.pack(side="left", anchor="w", padx=10, pady=10)
-        if https:
-            self.newButton = ttk.Button(
-                self.newLabelFrame,
-                text=f"https://{web}:443",
-                command=lambda: self.open_website(web, True),
-            )
-            self.newButton.pack(side="left", anchor="w", padx=10, pady=10)
-        self.webNodeList.append(self.newLabelFrame)
-        self.newLabelFrame.pack(padx=(0, 30), fill="x")
-
     def lock_gui(self):
         self.button_1.configure(state="disabled")
         self.button_2.configure(state="disabled")
@@ -211,6 +198,72 @@ class Tkgui(ttk.Window):
         self.popup_button2.pack(side="left", padx=20)
         self.frame_popup.pack(side="top", padx=20, pady=(0, 10))
 
+    def create_webbutton(self, web: str, text: str, http: bool, https: bool):
+        self.newLabelFrame = ttk.LabelFrame(self.noteframe_helper_webPages, text=text)
+        if http:
+            self.newButton = ttk.Button(
+                self.newLabelFrame,
+                text=f"http://{web}:80",
+                command=lambda: self.open_website(web, False),
+            )
+            self.newButton.pack(side="left", anchor="w", padx=10, pady=10)
+        if https:
+            self.newButton = ttk.Button(
+                self.newLabelFrame,
+                text=f"https://{web}:443",
+                command=lambda: self.open_website(web, True),
+            )
+            self.newButton.pack(side="left", anchor="w", padx=10, pady=10)
+        self.webNodeList.append(self.newLabelFrame)
+        self.newLabelFrame.pack(padx=(0, 30), fill="x")
+
+    def create_netsh_noAdmin(self):
+        self.netsh_label = ttk.Label(self.noteframe_netsh)
+        self.netsh_button = ttk.Button(self.noteframe_netsh)
+        self.netsh_label.pack(pady=(100, 10))
+        self.netsh_button.pack()
+        pass
+
+    def create_netsh_admin(self):
+        self.noteframe_helper_netsh = ScrolledFrame(self.noteframe_netsh)
+        self.noteframe_helper_netsh.pack(expand=True, fill="both")
+
+        self.netsh_labelframe_netshOutput = ttk.LabelFrame(
+            self.noteframe_helper_netsh, padding=0
+        )
+        self.netsh_labelframe_netshOutput.pack(padx=20, fill="x")
+        self.netsh_label_1 = ttk.Label(
+            self.netsh_labelframe_netshOutput, wraplength=600
+        )
+        self.netsh_label_1.pack(padx=20, fill="both")
+        self.netsh_label_1 = ttk.Label(
+            self.netsh_labelframe_netshOutput, wraplength=600
+        )
+        self.netsh_label_1.pack(padx=20, pady=5, fill="x")
+
+        self.netsh_frame_options = ttk.Frame(self.netsh_labelframe_netshOutput)
+        self.netsh_frame_options.pack(padx=20, fill="x")
+        self.netsh_button_1 = ttk.Button(self.netsh_frame_options, text="button 1")
+        self.netsh_button_1.pack(side="left", padx=5, pady=(0, 10))
+        self.netsh_button_2 = ttk.Button(self.netsh_frame_options, text="button 2")
+        self.netsh_button_2.pack(side="left", padx=5, pady=(0, 10))
+
+        self.netsh_static_1 = Netsh_StaticConfig(self.noteframe_helper_netsh)
+        self.netsh_static_1.pack(padx=20, pady=(0, 5), fill="x")
+        self.netsh_static_2 = Netsh_StaticConfig(self.noteframe_helper_netsh)
+        self.netsh_static_2.pack(padx=20, pady=(0, 5), fill="x")
+
+    def update_netshInfo(self, lines: list[str]):
+        if not self.isAdmin:
+            return
+        if len(lines) == 0:
+            return
+        text = ""
+        for line in lines[2:-2]:
+            if line != "":
+                text = text + f"{line}\n"
+        self.netsh_label_1.configure(text=text)
+
     @staticmethod
     def clean_text(textbox):
         textbox.configure(state="normal")
@@ -223,6 +276,54 @@ class Tkgui(ttk.Window):
             webbrowser.open(f"https://{web}:443")
         else:
             webbrowser.open(f"http://{web}:80")
+
+
+class Netsh_StaticConfig(ttk.LabelFrame):
+    def __init__(self, parent, *args, **kwargs):
+        super().__init__(parent, *args, **kwargs)
+        self.padding = 0
+        self.ip = ttk.StringVar()
+        self.subnet = ttk.StringVar()
+        self.gateway = ttk.StringVar()
+        self.ip.set("192.168.1.1")
+        self.subnet.set("255.255.255.0")
+        self.gateway.set("192.168.1.254")
+
+        self.label_ip = ttk.Label(self, text="IP Address")
+        self.label_subnet = ttk.Label(self, text="Subnet Mask")
+        self.label_gateway = ttk.Label(self, text="Default Gateway")
+        self.label_ip.grid(column=0, row=0, padx=10, pady=10)
+        self.label_subnet.grid(column=1, row=0, padx=10, pady=10)
+        self.label_gateway.grid(column=2, row=0, padx=10, pady=10)
+
+        self.entry_ip = ttk.Entry(self, textvariable=self.ip)
+        self.entry_subnet = ttk.Entry(self, textvariable=self.subnet)
+        self.entry_gateway = ttk.Entry(self, textvariable=self.gateway)
+        self.entry_ip.grid(column=0, row=1, padx=10, pady=10)
+        self.entry_subnet.grid(column=1, row=1, padx=10, pady=10)
+        self.entry_gateway.grid(column=2, row=1, padx=10, pady=10)
+
+        self.button = ttk.Button(
+            self,
+            text="Set",
+            width=10,
+        )
+        self.button.grid(column=3, row=1, padx=10, pady=10)
+
+        # self.button_del = ttk.Button(
+        #     self, text="Del", width=10, command=self.del_this_config
+        # )
+        # self.button_del.grid(column=4, row=1, padx=10, pady=10)
+
+    def get_static_config(self):
+        # netsh = [self.ip.get(), self.subnet.get(), self.gateway.get()]
+        # print(netsh)
+        # return netsh
+        return self.ip.get(), self.subnet.get(), self.gateway.get()
+
+    def del_this_config(self):
+        self.forget()
+        self.destroy()
 
 
 if __name__ == "__main__":
