@@ -4,9 +4,10 @@ import threading
 from tkinter import filedialog
 from os import _exit, path
 
-from sys import exception, executable
-from locale import getlocale
-from re import compile
+from sys import executable
+
+# from locale import getlocale
+# from re import compile
 from time import strftime, localtime, sleep
 
 import pyuac
@@ -27,25 +28,6 @@ israel-dryer/ttkbootstrap
 alessandromagg/pythonping
 bauerj/mac_vendor_lookup
 """
-
-
-def check_system():
-    this_locale = str(getlocale()[0])
-
-    if this_locale.startswith("English"):
-        pass
-    elif this_locale.startswith("Chinese (Traditional)"):
-        netscanner.RE_NAME = compile(r"描述")
-        netscanner.RE_IP = compile(r"IPv4 位址")
-        netscanner.RE_SUBNET = compile(r"子網路遮罩")
-        netscanner.RE_MAC = compile(r"實體位址")
-        netscanner.RE_MACTYPE = compile(r"動態")
-        netscanner.W_IP = "(偏好選項)"
-    else:
-        netscanner.logger.warn("ONLY WORK ON ENGLISH or CHINESE (TRANDITIONAL)")
-        gui.messagebox.show_error(
-            "Programe only works on English or Chinese (Traditional) system", "Error"
-        )
 
 
 def buttonFunc_popupConfirmYes():
@@ -111,17 +93,22 @@ def wait_for_scan():
             break
 
 
-def watch_netsh_config():
-    this = app.get_interfaceInfo()
+def watch_netsh_config(_this):
+    this = _this
+    loops = 0
     while True:
-        sleep(5)
-        new = app.get_interfaceInfo()
-        if this == new:
-            gui.update_netshInfo(app.get_netshInfo())
+        new = app.get_netshInfo()
+        loops = loops + 1
+        if this != new:
+            gui.update_netshInfo(new)
             app.scan_interfaces()
             gui.update_interfaceOptions(app.get_interfaceStrList())
-            gui.update_interfaceInfo(new)
+            # app.set_defaultActiveInterface()
+            gui.update_interfaceInfo(app.get_interfaceInfo())
             break
+        if loops == 5:
+            break
+        sleep(5)
 
 
 def print_report():
@@ -150,7 +137,7 @@ def print_report():
 def buttonFunc_rescanNetwork():
     netscanner.logger.info("Rescan network interfaces")
     app.scan_interfaces()
-    app.set_defaultActiveInterface()
+    # app.set_defaultActiveInterface()
     gui.update_interfaceOptions(app.get_interfaceStrList())
     gui.update_interfaceInfo(app.get_interfaceInfo())
     if isAdmin:
@@ -190,7 +177,8 @@ def buttonFunc_netshRefresh():
 def buttonFunc_netshSetDHCP():
     netscanner.logger.info(f"Set {app.active_interface['netsh']} to DHCP")
     app.set_ActiveInterface_DHCP()
-    thread = threading.Thread(target=watch_netsh_config)
+    lateInfo = app.get_netshInfo()
+    thread = threading.Thread(target=watch_netsh_config, args=(lateInfo,))
     thread.start()
 
 
@@ -198,19 +186,24 @@ def buttonFunc_netshSetStaic_1():
     ip, sn, gw = gui.netsh_static_1.get_static_config()
     netscanner.logger.info(f"Set {app.active_interface['netsh']} to {ip, sn, gw}")
     app.set_ActiveInterface_staticIP(ip, sn, gw)
-    thread = threading.Thread(target=watch_netsh_config)
+    lateInfo = app.get_netshInfo()
+    thread = threading.Thread(target=watch_netsh_config, args=(lateInfo,))
     thread.start()
 
 
 def buttonFunc_netshSetStaic_2():
-    ip, sn, gw = gui.netsh_static_1.get_static_config()
+    ip, sn, gw = gui.netsh_static_2.get_static_config()
     netscanner.logger.info(f"Set {app.active_interface['netsh']} to {ip, sn, gw}")
     app.set_ActiveInterface_staticIP(ip, sn, gw)
-    thread = threading.Thread(target=watch_netsh_config)
+    lateInfo = app.get_netshInfo()
+    thread = threading.Thread(target=watch_netsh_config, args=(lateInfo,))
     thread.start()
 
 
 def menuFunc_changeActiveInterface(*_):
+    if gui.om_optionVar.get() == "No Interface":
+        gui.update_interfaceInfo([""])
+        return
     ip = gui.om_optionVar.get().split(" --- ")[0]
     app.set_ActiveInterface(ip)
     gui.update_interfaceInfo(app.get_interfaceInfo())
@@ -256,8 +249,8 @@ def init_netsh():
         gui.netsh_button_2.configure(text="Set DHCP", command=buttonFunc_netshSetDHCP)
         gui.netsh_static_1.button.configure(command=buttonFunc_netshSetStaic_1)
         gui.netsh_static_2.button.configure(command=buttonFunc_netshSetStaic_2)
-        thread = threading.Thread(target=watch_netsh_config)
-        thread.start()
+        # thread = threading.Thread(target=watch_netsh_config)
+        # thread.start()
 
     else:
         netscanner.logger.info("Not administrator")
@@ -301,7 +294,6 @@ if __name__ == "__main__":
     log_tkhandle = netscanner.TkHandle(gui.console_textbox2)
     log_tkhandle.setLevel(logging.INFO)
     netscanner.logger.addHandler(log_tkhandle)
-    check_system()
 
     # load backend
     app = netscanner.NetScanner(vendorListPath=path.join(DIR_PATH, "mac_vendor.txt"))

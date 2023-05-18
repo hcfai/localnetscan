@@ -257,6 +257,7 @@ class Tkgui(ttk.Window):
         if not self.isAdmin:
             return
         if len(lines) == 0:
+            self.netsh_label_1.configure(text="Please Select an interface")
             return
         text = ""
         for line in lines[2:-2]:
@@ -287,7 +288,7 @@ class Netsh_StaticConfig(ttk.LabelFrame):
         self.gateway = ttk.StringVar()
         self.ip.set("192.168.1.1")
         self.subnet.set("255.255.255.0")
-        self.gateway.set("192.168.1.254")
+        self.gateway.set("")
 
         self.label_ip = ttk.Label(self, text="IP Address")
         self.label_subnet = ttk.Label(self, text="Subnet Mask")

@@ -7,6 +7,7 @@ from subprocess import run, PIPE
 from re import compile
 from ipaddress import IPv4Address, IPv4Interface
 from time import sleep
+from locale import getlocale
 
 from ttkbootstrap.scrolled import ScrolledText
 
@@ -17,10 +18,12 @@ from mac_vendor_lookup import MacLookup, BaseMacLookup
 from ttkbootstrap.constants import END
 
 
+## logging configurations
 class TkHandle(logging.Handler):
     def __init__(self, textbox: ScrolledText):
         formatter = logging.Formatter("[%(levelname)s] %(message)s")
-        logging.Handler.__init__(self)
+        # logging.Handler.__init__(self)
+        super().__init__()
         self.textbox = textbox
         self.setFormatter(formatter)
 
@@ -47,17 +50,28 @@ log_streamHandler.setFormatter(log_formatter)
 logger.addHandler(log_fileHandler)
 logger.addHandler(log_streamHandler)
 
-# REMAC_PATTERN,
-RE_NAME = compile(r"Description")
+# PATTERNs,
+this_locale = str(getlocale()[0])
+
 RE_NETSH_NAME = compile(r"Configuration for interface")
-RE_IP = compile(r"IPv4 Address")
 RE_NETSH_IP = compile(r"IP Address")
-RE_SUBNET = compile(r"Subnet Mask")
-RE_MAC = compile(r"Physical Address")
 RE_MACPATTERN = compile(r"(([0-9a-fA-F]){2}[-:]){5}([0-9a-fA-F]){2}")
 RE_IPPATTERN = compile(r"[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}")
+
+RE_NAME = compile(r"Description")
+RE_IP = compile(r"IPv4 Address")
+RE_SUBNET = compile(r"Subnet Mask")
+RE_MAC = compile(r"Physical Address")
 RE_MACTYPE = compile(r"dynamic")
 W_IP = "(Preferred)"
+
+if this_locale.startswith("Chinese (Traditional)"):
+    RE_NAME = compile(r"描述")
+    RE_IP = compile(r"IPv4 位址")
+    RE_SUBNET = compile(r"子網路遮罩")
+    RE_MAC = compile(r"實體位址")
+    RE_MACTYPE = compile(r"動態")
+    W_IP = "(偏好選項)"
 
 
 class NetScanner:
@@ -88,14 +102,12 @@ class NetScanner:
         }
 
     def start_pings(self):
-        ## check skip options
         if self.settings["SkipPing"].get():
             logger.info("skip pings")
         else:
             thread = threading.Thread(target=self._pingicmps)
             thread.start()
             thread.join()
-            # self._pingicmps()
             logger.info("all ping finished")
 
         ## run web port scan
@@ -104,7 +116,6 @@ class NetScanner:
             thread = threading.Thread(target=self.check_tcp)
             thread.start()
             thread.join()
-            # self.check_tcp()
 
         ## run mac lookup
         if self.settings["MacLookup"].get():
@@ -112,7 +123,6 @@ class NetScanner:
             thread = threading.Thread(target=self.check_macvendor)
             thread.start()
             thread.join()
-            # self.check_macvendor()
 
         ## sort outputs
         self.responded_hosts = sorted(
@@ -123,13 +133,13 @@ class NetScanner:
         self.is_scanning = False
 
     def _pingicmps(self):
-        thread_queue = []
+        threads = []
         for ip in self.active_interface["ipv4_interface"].network.hosts():
             thread = threading.Thread(target=self.ping_icmp, args=(ip,))
             thread.start()
-            thread_queue.append(thread)
+            threads.append(thread)
             sleep(0.01)
-        for thread in thread_queue:
+        for thread in threads:
             thread.join()
 
     def ping_icmp(self, ipv4_addr: IPv4Address):
@@ -157,39 +167,48 @@ class NetScanner:
         logger.info("clean responded list")
 
     def check_tcp(self):
+        threads = []
         for _ in range(len(self.responded_hosts)):
-            host = self.responded_hosts.pop(0)
-            ip = host["ipv4_addr"].exploded
+            thread = threading.Thread(target=self._ping_tcp)
+            thread.start()
+            threads.append(thread)
+            sleep(1)
+        for thread in threads:
+            thread.join()
 
-            if self.settings["httpScan"].get():
-                try:
-                    sock = socket(AF_INET, SOCK_STREAM)
-                    sock.settimeout(0.5)
-                    sock.connect((ip, 80))
-                    sock.settimeout(None)
-                except:
-                    logger.debug(f"{ip}:80 is close")
-                    host["http"] = False
-                else:
-                    logger.info(f"http://{ip}:80 is open")
-                    sock.close()
-                    host["http"] = True
+    def _ping_tcp(self):
+        host = self.responded_hosts.pop(0)
+        ip = host["ipv4_addr"].exploded
 
-            if self.settings["httpsScan"].get():
-                try:
-                    sock = socket(AF_INET, SOCK_STREAM)
-                    sock.settimeout(1)
-                    sock.connect((ip, 443))
-                    sock.settimeout(None)
-                except:
-                    logger.debug(f"{ip}:443 is close")
-                    host["https"] = False
-                else:
-                    logger.info(f"https://{ip}:443 is open")
-                    sock.close()
-                    host["https"] = True
+        if self.settings["httpScan"].get():
+            try:
+                sock = socket(AF_INET, SOCK_STREAM)
+                sock.settimeout(0.5)
+                sock.connect((ip, 80))
+                sock.settimeout(None)
+            except:
+                logger.debug(f"{ip}:80 is close")
+                host["http"] = False
+            else:
+                logger.info(f"http://{ip}:80 is open")
+                sock.close()
+                host["http"] = True
 
-            self.responded_hosts.append(host)
+        if self.settings["httpsScan"].get():
+            try:
+                sock = socket(AF_INET, SOCK_STREAM)
+                sock.settimeout(1)
+                sock.connect((ip, 443))
+                sock.settimeout(None)
+            except:
+                logger.debug(f"{ip}:443 is close")
+                host["https"] = False
+            else:
+                logger.info(f"https://{ip}:443 is open")
+                sock.close()
+                host["https"] = True
+
+        self.responded_hosts.append(host)
 
     def check_macvendor(self):
         self.scan_arp()
@@ -242,14 +261,23 @@ class NetScanner:
         return temp_list
 
     def get_netshInfo(self):
-        if self.active_interface != {}:
-            lines = str(
-                self.__run_windowsCommand(
-                    f'netsh int ipv4 sh add name={self.active_interface["netsh"]}'
-                )
-            ).split("\\n")
-            return lines
-        return []
+        if self.active_interface == {}:
+            return []
+        lines = str(
+            self.__run_windowsCommand(
+                f'netsh int ipv4 sh add name={self.active_interface["netsh"]}'
+            )
+        ).split("\\n")
+        return lines
+
+        # if self.active_interface != {}:
+        #     lines = str(
+        #         self.__run_windowsCommand(
+        #             f'netsh int ipv4 sh add name={self.active_interface["netsh"]}'
+        #         )
+        #     ).split("\\n")
+        #     return lines
+        # return []
 
     def scan_interfaces(self):
         logger.debug("scanning interfaces on this device")
@@ -291,18 +319,14 @@ class NetScanner:
         logger.debug(f"cant found {ip} in interface list")
 
     def set_ActiveInterface_staticIP(self, ip, sn, gw):
-        try:
-            if gw != "":
-                run(
-                    f'netsh int ipv4 set add name="{self.active_interface["netsh"]}" static {ip} {sn} ',
-                )
-            else:
-                run(
-                    f'netsh int ipv4 set add name="{self.active_interface["netsh"]}" static {ip} {sn} {gw}',
-                )
-        except exception as e:
-            logger.debug(e)
-            logger.error("Set interface to static ip failed")
+        if gw == "":
+            command = f'netsh int ipv4 set add name={self.active_interface["netsh"]} static {ip} {sn}'
+            logger.info(command)
+            run(command)
+        else:
+            command = f'netsh int ipv4 set add name={self.active_interface["netsh"]} static {ip} {sn} {gw}'
+            logger.info(command)
+            run(command)
 
     def set_ActiveInterface_DHCP(self):
         try:
