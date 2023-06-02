@@ -16,7 +16,7 @@ from gui import tkgui
 from scanner import netscanner
 
 DIR_PATH = path.dirname(__file__)
-NOTE = """Network Scanner for AV Technician v1.3_e
+NOTE = """Network Scanner for AV Technician v1.4
 DO NOT use this software in public network.
 Prefix small then 24 is not supported.
 Only work on English and Tranditional Chinese
@@ -288,7 +288,7 @@ def buttonFunc_test_2():
 if __name__ == "__main__":
     isAdmin = pyuac.isUserAdmin()
     # load GUI
-    gui = tkgui.Tkgui(title="Network Scaner v1.3_e", dirpath=DIR_PATH)
+    gui = tkgui.Tkgui(title="Network Scaner v1.4", dirpath=DIR_PATH)
 
     # log handler, scanner to gui
     log_tkhandle = netscanner.TkHandle(gui.console_textbox2)
